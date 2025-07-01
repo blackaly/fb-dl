@@ -54,7 +54,6 @@ namespace VideoDownloaderConsole
                 }
 
             downloader.Dispose();
-            Console.WriteLine("Thank you for using SnapTik Video Downloader!");
         }
     }
 }
