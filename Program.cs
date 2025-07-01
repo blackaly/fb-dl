@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace VideoDownloaderConsole
@@ -18,33 +19,39 @@ namespace VideoDownloaderConsole
 
             var downloader = new VideoDownloaderService();
 
-            while (true)
+            if (!string.IsNullOrEmpty(args[1]))
             {
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.Write("Enter video URL: ");
-                Console.ResetColor();
-                
-                string input = Console.ReadLine()?.Trim();
-
-                if (string.IsNullOrEmpty(input))
-                    continue;
-
-                if (input.ToLower() == "exit")
-                    break;
-
-                try
-                {
-                    await downloader.ProcessVideoUrl(input);
-                }
-                catch (Exception ex)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Error: {ex.Message}");
-                    Console.ResetColor();
-                }
-
-                Console.WriteLine("\n" + new string('=', 60) + "\n");
+                await downloader.ProcessVideoUrl(args[1]);
+                return;
             }
+
+            while (true)
+                {
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.Write("Enter video URL: ");
+                    Console.ResetColor();
+
+                    string input = Console.ReadLine()?.Trim();
+
+                    if (string.IsNullOrEmpty(input))
+                        continue;
+
+                    if (input.ToLower() == "exit")
+                        break;
+
+                    try
+                    {
+                        await downloader.ProcessVideoUrl(input);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"Error: {ex.Message}");
+                        Console.ResetColor();
+                    }
+
+                    Console.WriteLine("\n" + new string('=', 60) + "\n");
+                }
 
             downloader.Dispose();
             Console.WriteLine("Thank you for using SnapTik Video Downloader!");
