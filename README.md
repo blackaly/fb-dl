@@ -62,32 +62,6 @@ After running, the video will be downloaded to your working directory.
 
 ---
 
-## Create and Publish NuGet Package
-
-### ack the Project
-
-```bash
-dotnet pack -c Release
-```
-
-> ⚠️ If you see `error NU5026` about missing `.runtimeconfig.json`, ensure the project is built first.
-
-### 🚀 Publish to NuGet
-
-1. Add NuGet source (only once):
-
-   ```bash
-   dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
-   ```
-
-2. Push the package:
-
-   ```bash
-   dotnet nuget push bin/Release/facebook-downloader.*.nupkg --source nuget.org --api-key YOUR_API_KEY
-   ```
-
----
-
 ## GitHub Integration for NuGet
 
 Add the following to your `.csproj` to associate the package with this GitHub repository:
