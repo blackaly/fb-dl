@@ -19,7 +19,7 @@ namespace VideoDownloaderConsole
 
             var downloader = new VideoDownloaderService();
 
-            if (!string.IsNullOrEmpty(args[1]))
+            if (args.Length >= 2 && !string.IsNullOrEmpty(args[1]))
             {
                 await downloader.ProcessVideoUrl(args[1]);
                 return;
