@@ -1,0 +1,15 @@
+E:\forTesting\dotnet\fb-dl\bin\Release\net9.0\facebook-downloader.exe
+E:\forTesting\dotnet\fb-dl\bin\Release\net9.0\facebook-downloader.deps.json
+E:\forTesting\dotnet\fb-dl\bin\Release\net9.0\facebook-downloader.runtimeconfig.json
+E:\forTesting\dotnet\fb-dl\bin\Release\net9.0\facebook-downloader.dll
+E:\forTesting\dotnet\fb-dl\bin\Release\net9.0\facebook-downloader.pdb
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\facebook-downloader.GeneratedMSBuildEditorConfig.editorconfig
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\facebook-downloader.AssemblyInfoInputs.cache
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\facebook-downloader.AssemblyInfo.cs
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\facebook-downloader.csproj.CoreCompileInputs.cache
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\facebook-downloader.sourcelink.json
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\facebook-downloader.dll
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\refint\facebook-downloader.dll
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\facebook-downloader.pdb
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\facebook-downloader.genruntimeconfig.cache
+E:\forTesting\dotnet\fb-dl\obj\Release\net9.0\ref\facebook-downloader.dll
