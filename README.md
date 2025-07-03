@@ -74,10 +74,21 @@ Add the following to your `.csproj` to associate the package with this GitHub re
 
 ---
 
+## Run with Docker
+Make sure you're in the root directory (where the Dockerfile is):
+```bash
+docker build -t fb-dl-app .
+docker run --rm fb-dl-app https://www.facebook.com/watch/?v=YOUR_VIDEO_ID
+```
+you can also run interactively if needed:
+```bash
+docker run -it --rm fb-dl-app
+```
+
 ## Contributing
 
 Contributions, bug reports, and feature requests are welcome!
-
+0
 ### How to Contribute
 
 1. Fork the repository
