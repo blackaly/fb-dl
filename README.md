@@ -45,7 +45,7 @@ dotnet build -c Release
 To download a video, run the tool from the CLI:
 
 ```bash
-dotnet run --project src/facebook-downloader/facebook-downloader.csproj -- https://www.facebook.com/watch/?v=YOUR_VIDEO_ID
+dotnet run --project src/facebook-downloader/facebook-downloader.csproj -- "https://www.facebook.com/watch/?v=YOUR_VIDEO_ID"
 ```
 
 Replace the URL with a **public Facebook video** link.
@@ -55,7 +55,7 @@ Replace the URL with a **public Facebook video** link.
 ## Example
 
 ```bash
-dotnet run --project src/facebook-downloader/facebook-downloader.csproj -- https://www.facebook.com/watch/?v=123456789012345
+dotnet run --project src/facebook-downloader/facebook-downloader.csproj -- "https://www.facebook.com/watch/?v=123456789012345"
 ```
 
 After running, the video will be downloaded to your working directory.
