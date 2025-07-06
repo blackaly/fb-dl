@@ -1,6 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics; // Required for opening the folder
+using System.IO;
+using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-
+using System.Threading.Tasks;
 
 namespace VideoDownloaderConsole
 {
@@ -42,7 +48,6 @@ namespace VideoDownloaderConsole
             {
                 await DownloadFacebookVideo(url);
             }
-
             else
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -70,7 +75,7 @@ namespace VideoDownloaderConsole
                 var result = await FetchFacebookVideoWithRetry(url, 3);
                 if (result != null)
                 {
-                    DisplayFacebookVideoInfo(result);
+                    await DisplayFacebookVideoInfo(result);
                 }
             }
             catch (Exception ex)
@@ -108,10 +113,7 @@ namespace VideoDownloaderConsole
 
         private async Task<FacebookVideoResult> FetchFacebookVideo(string url)
         {
-            // Extract video ID
             var videoId = ExtractFacebookVideoId(url);
-
-            // Setup headers
             var headers = new Dictionary<string, string>
             {
                 ["User-Agent"] = GetRandomUserAgent(),
@@ -119,12 +121,6 @@ namespace VideoDownloaderConsole
                 ["DNT"] = "1",
                 ["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
                 ["Accept-Language"] = "en-GB,en;q=0.9,tr-TR;q=0.8,tr;q=0.7,en-US;q=0.6",
-                ["Cache-Control"] = "max-age=0",
-                ["Sec-Fetch-Dest"] = "document",
-                ["Sec-Fetch-Mode"] = "navigate",
-                ["Sec-Fetch-Site"] = "none",
-                ["Sec-Fetch-User"] = "?1",
-                ["Upgrade-Insecure-Requests"] = "1"
             };
 
             _httpClient.DefaultRequestHeaders.Clear();
@@ -146,18 +142,31 @@ namespace VideoDownloaderConsole
                 throw new Exception("Unable to load page content.");
             }
 
-            // Extract video links and metadata
+            // *** FIXED: The title is now cleaned before being used ***
+            var rawTitle = ExtractMetaProperty(html, "og:title") ?? "Facebook Video";
+
             var result = new FacebookVideoResult
             {
                 Success = true,
                 VideoId = videoId,
-                SdLink = ExtractVideoLink(html, @"browser_native_sd_url"":""([^""]+)"""),
-                HdLink = ExtractVideoLink(html, @"browser_native_hd_url"":""([^""]+)"""),
-                Title = ExtractTitle(html),
-                Thumbnail = ExtractThumbnail(html)
+                Title = CleanVideoTitle(rawTitle), // Clean the title
+                PageName = ExtractPageName(html) ?? "Facebook Page",
+                Thumbnail = ExtractMetaProperty(html, "og:image") ?? "https://via.placeholder.com/200x300"
             };
 
-            if (string.IsNullOrEmpty(result.SdLink) && string.IsNullOrEmpty(result.HdLink))
+            var sdLink = ExtractVideoLink(html, @"browser_native_sd_url"":""([^""]+)""");
+            if (!string.IsNullOrEmpty(sdLink))
+            {
+                result.Downloads.Add(new DownloadOption { Quality = "SD", Format = "mp4", Url = sdLink });
+            }
+
+            var hdLink = ExtractVideoLink(html, @"browser_native_hd_url"":""([^""]+)""");
+            if (!string.IsNullOrEmpty(hdLink))
+            {
+                result.Downloads.Add(new DownloadOption { Quality = "HD", Format = "mp4", Url = hdLink });
+            }
+
+            if (result.Downloads.Count == 0)
             {
                 throw new Exception("Video link not found. Make sure the video is public.");
             }
@@ -165,31 +174,70 @@ namespace VideoDownloaderConsole
             return result;
         }
 
-        private void DisplayFacebookVideoInfo(FacebookVideoResult result)
+        private async Task DisplayFacebookVideoInfo(FacebookVideoResult result)
         {
             Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine($"\nPage: {result.PageName}");
             Console.WriteLine($"Title: {result.Title}");
-            Console.WriteLine($"Thumbnail: {result.Thumbnail}");
-            Console.WriteLine($"Video ID: {result.VideoId}");
             Console.ResetColor();
 
+            if (result.Downloads.Count == 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("No downloadable video links were found.");
+                Console.ResetColor();
+                return;
+            }
+
+            // --- Choose Quality ---
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\nDownload link:");
+            Console.WriteLine("\nChoose a format to download:");
             Console.ResetColor();
 
-            if (!string.IsNullOrEmpty(result.SdLink))
+            for (int i = 0; i < result.Downloads.Count; i++)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"📱 Low quality (SD): {result.SdLink}&dl=1");
-                Console.ResetColor();
+                var option = result.Downloads[i];
+                Console.WriteLine($"  {i + 1}. {option.Quality} quality ({option.Format})");
+            }
+            Console.WriteLine($"  {result.Downloads.Count + 1}. Cancel");
+
+            Console.Write("\nEnter your choice: ");
+            string qualityChoiceStr = Console.ReadLine();
+
+            if (!int.TryParse(qualityChoiceStr, out int qualityChoice) || qualityChoice <= 0 || qualityChoice > result.Downloads.Count)
+            {
+                Console.WriteLine("Invalid selection or cancel.");
+                return;
+            }
+            var selectedOption = result.Downloads[qualityChoice - 1];
+
+            // --- Automatically format the filename ---
+            string baseFileName = $"{result.Title} by {result.PageName}";
+            string safeFileName = Utils.GetSafeFileName(baseFileName, "mp4");
+
+            await DownloadFile(selectedOption.Url, safeFileName);
+        }
+        
+        // *** NEW METHOD: Cleans the messy title from Facebook ***
+        private string CleanVideoTitle(string rawTitle)
+        {
+            if (string.IsNullOrEmpty(rawTitle))
+            {
+                return "Facebook Video";
             }
 
-            if (!string.IsNullOrEmpty(result.HdLink))
+            // Split the title by the underscore, which often separates metadata from the real title
+            var parts = rawTitle.Split(new[] { '_' }, StringSplitOptions.RemoveEmptyEntries);
+
+            // If the split gives us multiple parts, we assume the second part is the most likely candidate for the real title.
+            // This handles cases like: "1M Views _ The Real Title _ Some other text"
+            if (parts.Length > 1)
             {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"🎬 High quality (HD): {result.HdLink}&dl=1");
-                Console.ResetColor();
+                return parts[1].Trim();
             }
+
+            // If there's no underscore, it might be a cleaner title already, so return it as is.
+            return rawTitle.Trim();
         }
 
         private string GetRandomUserAgent()
@@ -201,7 +249,11 @@ namespace VideoDownloaderConsole
 
         private string ExtractFacebookVideoId(string url)
         {
-            var match = Regex.Match(url, @"(\d+)/?$");
+            var match = Regex.Match(url, @"/videos/(\d+)/?$");
+            if (match.Success)
+                return match.Groups[1].Value;
+
+            match = Regex.Match(url, @"/watch/\?v=(\d+)");
             if (match.Success)
                 return match.Groups[1].Value;
 
@@ -213,67 +265,54 @@ namespace VideoDownloaderConsole
             var match = Regex.Match(html, pattern);
             if (match.Success)
             {
-                try
-                {
-                    var jsonString = $"{{\"text\": \"{match.Groups[1].Value}\"}}";
-                    var jsonDoc = JsonDocument.Parse(jsonString);
-                    return jsonDoc.RootElement.GetProperty("text").GetString();
-                }
-                catch
-                {
-                    return match.Groups[1].Value;
-                }
+                return JsonSerializer.Deserialize<string>($"\"{match.Groups[1].Value}\"");
             }
             return null;
         }
 
-        private string ExtractTitle(string html)
+        private string ExtractMetaProperty(string html, string propertyName)
         {
-            var patterns = new[]
+            var pattern = $@"<meta\s+(?:name|property)=""{Regex.Escape(propertyName)}""\s+content=""([^""]+)""";
+            var match = Regex.Match(html, pattern, RegexOptions.IgnoreCase);
+            if (match.Success)
             {
-                @"<title>(.*?)</title>",
-                @"title id=""pageTitle"">(.+?)</title>"
-            };
-
-            foreach (var pattern in patterns)
-            {
-                var match = Regex.Match(html, pattern, RegexOptions.IgnoreCase);
-                if (match.Success)
-                {
-                    try
-                    {
-                        var jsonString = $"{{\"text\": \"{match.Groups[1].Value}\"}}";
-                        var jsonDoc = JsonDocument.Parse(jsonString);
-                        return jsonDoc.RootElement.GetProperty("text").GetString();
-                    }
-                    catch
-                    {
-                        return match.Groups[1].Value;
-                    }
-                }
+                return System.Net.WebUtility.HtmlDecode(match.Groups[1].Value);
             }
-
-            return "Video Facebook";
+            return null;
         }
 
-        private string ExtractThumbnail(string html)
+        private string ExtractPageName(string html)
         {
-            var match = Regex.Match(html, @"<meta[^>]+property=[""']og:image[""'][^>]+content=[""']([^""']+)[""']", RegexOptions.IgnoreCase);
-            return match.Success ? match.Groups[1].Value : "https://via.placeholder.com/200x300";
+            string pageName = ExtractMetaProperty(html, "author");
+            if (!string.IsNullOrEmpty(pageName))
+            {
+                return pageName;
+            }
+
+            var match = Regex.Match(html, @"""page_name"":""([^""]+)""");
+            if (match.Success)
+            {
+                return Regex.Unescape(match.Groups[1].Value);
+            }
+
+            return null;
         }
 
         #endregion
 
-
-        public async Task DownloadFile(string url, string fileName, string outputDirectory = "Downloads")
+        public async Task DownloadFile(string url, string fileName, string outputDirectory = null)
         {
+            if (string.IsNullOrEmpty(outputDirectory))
+            {
+                outputDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            }
+
             try
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Downloading: {fileName}");
+                Console.WriteLine($"\nDownloading to: {Path.Combine(outputDirectory, fileName)}");
                 Console.ResetColor();
 
-                // Create directory if it doesn't exist
                 if (!Directory.Exists(outputDirectory))
                 {
                     Directory.CreateDirectory(outputDirectory);
@@ -291,33 +330,30 @@ namespace VideoDownloaderConsole
                 using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
 
                 var buffer = new byte[8192];
-                var isMoreToRead = true;
+                int bytesRead;
 
-                do
+                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
                 {
-                    var read = await contentStream.ReadAsync(buffer, 0, buffer.Length);
-                    if (read == 0)
+                    await fileStream.WriteAsync(buffer, 0, bytesRead);
+                    downloadedBytes += bytesRead;
+
+                    if (totalBytes > 0)
                     {
-                        isMoreToRead = false;
+                        var progressPercentage = (double)downloadedBytes / totalBytes * 100;
+                        Console.Write($"\r📊 Progress: {progressPercentage:F1}% ({Utils.FormatFileSize(downloadedBytes)} / {Utils.FormatFileSize(totalBytes)})");
                     }
                     else
                     {
-                        await fileStream.WriteAsync(buffer, 0, read);
-                        downloadedBytes += read;
-
-                        if (totalBytes > 0)
-                        {
-                            var progressPercentage = (double)downloadedBytes / totalBytes * 100;
-                            Console.Write($"\r📊 Progress: {progressPercentage:F1}% ({downloadedBytes:N0}/{totalBytes:N0} bytes)");
-                        }
+                        Console.Write($"\r📊 Progress: {Utils.FormatFileSize(downloadedBytes)} downloaded");
                     }
                 }
-                while (isMoreToRead);
 
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"Download successful: {filePath}");
+                Console.WriteLine($"✅ Download successful: {filePath}");
                 Console.ResetColor();
+
+                Process.Start("explorer.exe", outputDirectory);
             }
             catch (Exception ex)
             {

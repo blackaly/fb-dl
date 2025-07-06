@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Collections.Generic;
 
 namespace VideoDownloaderConsole
 {
@@ -41,10 +42,10 @@ namespace VideoDownloaderConsole
         public bool Success { get; set; }
         public string Message { get; set; }
         public string VideoId { get; set; }
-        public string SdLink { get; set; }
-        public string HdLink { get; set; }
         public string Title { get; set; } = "Video Facebook";
+        public string PageName { get; set; } = "Facebook Page";
         public string Thumbnail { get; set; } = "https://via.placeholder.com/200x300";
+        public List<DownloadOption> Downloads { get; set; } = new List<DownloadOption>();
     }
 
     public class ErrorInfo
