@@ -1,8 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Web;
+using Microsoft.Win32;
+using System.Security.Principal;
 
 namespace VideoDownloaderConsole
 {
@@ -18,10 +17,10 @@ namespace VideoDownloaderConsole
 
             // Basic HTML tag removal
             content = Regex.Replace(content, "<.*?>", string.Empty);
-            
+
             // Decode HTML entities
             content = HttpUtility.HtmlDecode(content);
-            
+
             return content.Trim();
         }
 
@@ -68,7 +67,7 @@ namespace VideoDownloaderConsole
             // Remove invalid characters
             var invalidChars = System.IO.Path.GetInvalidFileNameChars();
             var safeName = string.Join("_", title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
-            
+
             // Limit length
             if (safeName.Length > 100)
                 safeName = safeName.Substring(0, 100);
@@ -91,5 +90,38 @@ namespace VideoDownloaderConsole
             }
             return $"{len:0.##} {sizes[order]}";
         }
+        
+         /*  private static bool IsAdministrator()
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
+
+        public static void AddToPATH()
+        {
+            string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+            string exeDirectory = Path.GetDirectoryName(exePath);
+            if (IsAdministrator())
+            {
+                string sysPath = Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Machine) ?? "";
+                if (!sysPath.Split(';').Contains(exeDirectory, StringComparer.OrdinalIgnoreCase))
+                {
+                    string newSysPath = sysPath + ";" + exeDirectory;
+                    Environment.SetEnvironmentVariable("PATH", newSysPath, EnvironmentVariableTarget.Machine);
+                    Console.WriteLine("Added to system PATH.");
+                }
+                else
+                {
+                    Console.WriteLine("Already in system PATH.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Must run as administrator to edit system PATH.");
+            }
+        } */
+
     }
 }
