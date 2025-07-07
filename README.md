@@ -2,6 +2,9 @@
 
 **fb-dl** is a lightweight and efficient command-line tool built with .NET 9.0 that allows you to download public Facebook videos and reels by simply passing their URL. This tool is designed for developers, automation tasks, and anyone who wants a reliable way to retrieve Facebook-hosted video content.
 
+
+![til](./assets/output.gif)
+
 ---
 
 ## ✨ Features
