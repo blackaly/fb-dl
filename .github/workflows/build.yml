@@ -1,0 +1,52 @@
+name: Standalone builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            rid: linux-x64
+            binary: fb-dl
+          - os: windows-2022
+            rid: win-x64
+            binary: fb-dl.exe
+          - os: macos-15-intel
+            rid: osx-x64
+            binary: fb-dl
+          - os: macos-15
+            rid: osx-arm64
+            binary: fb-dl
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test
+        run: dotnet test tests/fb-dl.Tests.csproj -c Release --nologo
+      - name: Publish single executable
+        run: >-
+          dotnet publish src/fb-dl.csproj -c Release -r ${{ matrix.rid }} --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:PublishTrimmed=false -p:DebugType=None -o artifacts/${{ matrix.rid }}
+      - name: Smoke test
+        shell: bash
+        run: ./artifacts/${{ matrix.rid }}/${{ matrix.binary }} --help
+      - name: Archive executable with permissions
+        shell: bash
+        run: tar -czf fb-dl-${{ matrix.rid }}.tar.gz -C artifacts/${{ matrix.rid }} ${{ matrix.binary }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fb-dl-${{ matrix.rid }}
+          path: fb-dl-${{ matrix.rid }}.tar.gz
+          if-no-files-found: error

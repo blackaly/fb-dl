@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Web;
-using Microsoft.Win32;
-using System.Security.Principal;
+using System.Text;
 
 namespace VideoDownloaderConsole
 {
@@ -52,27 +51,59 @@ namespace VideoDownloaderConsole
             if (string.IsNullOrEmpty(url))
                 return false;
 
-            return Uri.TryCreate(url, UriKind.Absolute, out Uri result) &&
+            return Uri.TryCreate(url, UriKind.Absolute, out var result) &&
                    (result.Scheme == Uri.UriSchemeHttp || result.Scheme == Uri.UriSchemeHttps);
+        }
+
+        internal static string NormalizeUrlInput(string? input)
+        {
+            var url = input?.Trim() ?? "";
+            // Unwrap a complete pasted Markdown link, using its destination,
+            // never its display text. Host validation still happens afterward.
+            var markdown = Regex.Match(url,
+                @"\A\[[^\]\r\n]*\]\((?<url><https?://[^<>\s]+>|https?://[^<>\s]+)\)\z",
+                RegexOptions.IgnoreCase | RegexOptions.NonBacktracking);
+            if (markdown.Success)
+                url = markdown.Groups["url"].Value;
+            if (url.StartsWith('<') && url.EndsWith('>'))
+                url = url[1..^1];
+            return url;
         }
 
         /// <summary>
         /// Get safe filename from title
         /// </summary>
-        public static string GetSafeFileName(string title, string extension = "mp4")
+        public static string GetSafeFileName(string? title, string extension = "mp4")
         {
-            if (string.IsNullOrEmpty(title))
-                title = "video";
-
-            // Remove invalid characters
-            var invalidChars = System.IO.Path.GetInvalidFileNameChars();
-            var safeName = string.Join("_", title.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
-
-            // Limit length
-            if (safeName.Length > 100)
-                safeName = safeName.Substring(0, 100);
-
+            if (!Regex.IsMatch(extension, @"\A[a-zA-Z0-9]+\z"))
+                throw new ArgumentException("Invalid file extension.", nameof(extension));
+            var safeName = new string((title ?? "").Select(c =>
+                char.IsControl(c) || "<>:\"/\\|?*".Contains(c) ? '_' : c).ToArray()).Trim().TrimEnd('.');
+            // Leave room for the extension and collision suffix on filesystems
+            // whose filename limit is measured in UTF-8 bytes, not characters.
+            var shortened = new StringBuilder();
+            var bytes = 0;
+            foreach (var rune in safeName.EnumerateRunes())
+            {
+                if (bytes + rune.Utf8SequenceLength > 180)
+                    break;
+                shortened.Append(rune.ToString());
+                bytes += rune.Utf8SequenceLength;
+            }
+            safeName = shortened.ToString().TrimEnd(' ', '.');
+            if (string.IsNullOrWhiteSpace(safeName))
+                safeName = "video";
+            if (Regex.IsMatch(safeName.Split('.')[0], @"\A(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])\z", RegexOptions.IgnoreCase))
+                safeName = "_" + safeName;
             return $"{safeName}.{extension}";
+        }
+
+        internal static Task<string?> ReadLineAsync(CancellationToken cancellationToken)
+        {
+            // Console's synchronized reader can block even through ReadLineAsync.
+            // Wait on a background read so Ctrl+C also works at either prompt.
+            var input = Console.In;
+            return Task.Run(input.ReadLine, cancellationToken).WaitAsync(cancellationToken);
         }
 
         /// <summary>

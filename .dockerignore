@@ -1,0 +1,11 @@
+.git
+**/bin
+**/obj
+TestResults
+tests
+videos
+**/*.part
+
+artifacts
+benchmarks
+**/.fb-dl
