@@ -1,5 +1,9 @@
 # fb-dl
 
+<p align="center">
+  <img src="./assets/output.gif" alt="fb-dl download demonstration">
+</p>
+
 A command-line tool that saves public Facebook videos and reels as MP4 files.
 
 Choose a quality, save videos to a folder, and resume interrupted downloads when the server supports it. Large videos can use four connections at once to improve download speed.
